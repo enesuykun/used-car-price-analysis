@@ -2,3 +2,7 @@ numpy
 pandas
 scikit-learn
 matplotlib
+# notebook (isteğe bağlı / optional)
+nbformat
+nbconvert
+ipykernel
