@@ -1,0 +1,484 @@
+<title>Araç Değer Tahmini</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Düzen: soldan sağa form + ekspertiz şeması, sağda sabit "hesap dökümü" kartı (dar ekranda altta sabit özet çubuğu).
+   Görünüm: ekspertiz raporu gibi sakin, mavi-yeşil mürekkep rengi; parça durumları gerçek ekspertiz renk dilinde. */
+:root {
+  --bg: #eef2f3; --surface: #ffffff; --surface-2: #f5f8f9; --ink: #14232b; --muted: #55666e; --line: #d5dee2; --line-strong: #aebcc3;
+  --accent: #0b6e6e; --accent-ink: #ffffff; --accent-soft: #dcefee;
+  --st-orig: #dfe7ea; --st-local: #f4dc7d; --st-paint: #f1a24f; --st-repl: #d9534f; --st-ink: #14232b;
+  --loss: #b3382f; --warn-bg: #fff3d6; --warn-ink: #6a4a00; --note-bg: #e7f0f6; --note-ink: #1d4a63;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e181d; --surface: #15242b; --surface-2: #1a2d35; --ink: #e5edf0; --muted: #94a6ae; --line: #2a3d46; --line-strong: #425760;
+    --accent: #4cc3bf; --accent-ink: #062524; --accent-soft: #14383c;
+    --st-orig: #2b3f48; --st-local: #cdb24a; --st-paint: #d98a35; --st-repl: #e0615c; --st-ink: #0e181d;
+    --loss: #ff8b82; --warn-bg: #3a2f10; --warn-ink: #f3d78b; --note-bg: #14303f; --note-ink: #a9d3ea;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e181d; --surface: #15242b; --surface-2: #1a2d35; --ink: #e5edf0; --muted: #94a6ae; --line: #2a3d46; --line-strong: #425760;
+  --accent: #4cc3bf; --accent-ink: #062524; --accent-soft: #14383c;
+  --st-orig: #2b3f48; --st-local: #cdb24a; --st-paint: #d98a35; --st-repl: #e0615c; --st-ink: #0e181d;
+  --loss: #ff8b82; --warn-bg: #3a2f10; --warn-ink: #f3d78b; --note-bg: #14303f; --note-ink: #a9d3ea;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 28px; }
+[hidden] { display: none !important; }
+button, select, input { font: inherit; color: inherit; }
+.wrap { max-width: 1120px; margin: 0 auto; }
+header.top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 24px; margin-bottom: 14px; }
+h1 { font-size: 1.65rem; line-height: 1.2; margin: 0 0 4px; font-weight: 600; text-wrap: balance; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 0; max-width: 60ch; }
+.lang { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.lang button { background: transparent; border: 0; padding: 6px 12px; cursor: pointer; font-weight: 500; }
+.lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 6px; padding: 10px 14px; margin: 0 0 18px; font-size: 0.9rem; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 20px; align-items: start; }
+.col { display: grid; gap: 16px; min-width: 0; }
+section.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+section.card > h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin: 0 0 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.field { display: grid; gap: 5px; min-width: 0; align-content: start; }
+.field.wide { grid-column: 1 / -1; }
+label, .lbl { font-size: 0.85rem; font-weight: 500; }
+select, input[type="number"] { width: 100%; min-height: 40px; padding: 7px 10px; font-size: 16px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); }
+select:disabled { background: var(--surface-2); color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hint { font-size: 0.8rem; color: var(--muted); margin: 0; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; min-height: 28px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.seg button { background: var(--surface); border: 0; border-right: 1px solid var(--line); padding: 8px 12px; cursor: pointer; min-height: 40px; display: inline-flex; align-items: center; gap: 7px; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 -3px 0 var(--accent); font-weight: 600; }
+.chip { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line-strong); flex: none; }
+.insp { display: grid; grid-template-columns: minmax(170px, 230px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.diagram { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.diagram svg { display: block; width: 100%; height: auto; max-height: 440px; }
+.part { cursor: pointer; stroke: var(--line-strong); stroke-width: 1.2; transition: fill 0.12s; }
+.part[data-state="Orijinal"] { fill: var(--st-orig); }
+.part[data-state="Lokal boyalı"] { fill: var(--st-local); }
+.part[data-state="Boyalı"] { fill: var(--st-paint); }
+.part[data-state="Değişen"] { fill: var(--st-repl); }
+.part:hover { stroke: var(--ink); stroke-width: 2; }
+.part:focus-visible { outline: none; stroke: var(--accent); stroke-width: 3; }
+.wheel { fill: var(--ink); opacity: 0.55; }
+.dlabel { font: 500 8px var(--font-num); fill: var(--muted); letter-spacing: 0.06em; }
+.caption { font-size: 0.85rem; min-height: 1.4em; margin: 8px 0 0; color: var(--muted); }
+.caption b { color: var(--ink); font-weight: 600; }
+.insp-side { display: grid; gap: 12px; min-width: 0; }
+details.list { border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; }
+details.list summary { cursor: pointer; padding: 10px 0; font-weight: 500; font-size: 0.9rem; }
+.plist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding: 4px 0 14px; }
+.plist .field label { font-weight: 400; font-size: 0.8rem; }
+.plist select { min-height: 34px; padding: 4px 8px; font-size: 0.85rem; }
+.link-btn { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 4px 0; text-align: left; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; width: fit-content; }
+aside.result { position: sticky; top: 16px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 20px; min-width: 0; }
+.eyebrow { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin: 0; }
+.car-line { margin: 2px 0 14px; color: var(--muted); font-size: 0.88rem; }
+.price { font: 500 2.35rem/1.1 var(--font-num); letter-spacing: -0.02em; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.price small { font-size: 1rem; color: var(--muted); font-weight: 400; }
+.range { margin: 16px 0 4px; }
+.track { position: relative; height: 10px; border-radius: 5px; background: var(--accent-soft); }
+.track i { position: absolute; top: -4px; width: 4px; height: 18px; background: var(--accent); border-radius: 2px; transform: translateX(-2px); }
+.range-lbl { display: flex; justify-content: space-between; gap: 8px; font: 400 0.82rem var(--font-num); color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.rows { display: grid; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
+.row { display: grid; gap: 4px; }
+.row-top { display: flex; justify-content: space-between; gap: 12px; font-size: 0.88rem; }
+.row-top .v { font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row-top .v.neg { color: var(--loss); }
+.bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.bar b { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.bar b.neg { background: var(--loss); }
+.row.total .row-top { font-weight: 600; }
+h3.sm { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin: 20px 0 8px; }
+table.parts { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+table.parts td { padding: 5px 0; border-top: 1px solid var(--line); }
+table.parts td:last-child { text-align: right; font-family: var(--font-num); color: var(--loss); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; border: 1px solid var(--line-strong); }
+.note { background: var(--note-bg); color: var(--note-ink); border-radius: 6px; padding: 9px 12px; font-size: 0.82rem; margin: 14px 0 0; }
+.note.warn { background: var(--warn-bg); color: var(--warn-ink); }
+.fine { color: var(--muted); font-size: 0.78rem; margin: 14px 0 0; }
+footer.page { margin-top: 22px; color: var(--muted); font-size: 0.82rem; display: grid; gap: 6px; max-width: 78ch; }
+footer.page a { color: var(--accent); }
+.dock { display: none; }
+@media (max-width: 899px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  aside.result { position: static; }
+  .dock { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--surface); border-top: 1px solid var(--line-strong);
+    padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .dock .dp { font: 500 1.2rem var(--font-num); font-variant-numeric: tabular-nums; }
+  .dock .dl { font-size: 0.75rem; color: var(--muted); display: block; }
+  .dock a { color: var(--accent-ink); background: var(--accent); padding: 9px 14px; border-radius: 6px; text-decoration: none; font-weight: 500; white-space: nowrap; }
+  body { padding-bottom: 92px; }
+}
+@media (max-width: 620px) {
+  .insp { grid-template-columns: minmax(0, 1fr); }
+  .diagram { max-width: 260px; margin: 0 auto; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 1.4rem; }
+  .price { font-size: 2rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<!--BODY-->
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 data-i18n="title">Araç Değer Tahmini</h1>
+      <p class="sub" data-i18n="subtitle"></p>
+    </div>
+    <div class="lang" role="group" aria-label="Dil / Language">
+      <button type="button" data-lang="tr" aria-pressed="true">TR</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <p class="banner" data-i18n="banner"></p>
+
+  <div class="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="h-vehicle">
+        <h2 id="h-vehicle" data-i18n="h_vehicle"></h2>
+        <div class="grid2">
+          <div class="field wide"><label for="model" data-i18n="f_model"></label><select id="model"></select></div>
+          <div class="field"><label for="year" data-i18n="f_year"></label><select id="year"></select></div>
+          <div class="field"><label for="engine" data-i18n="f_engine"></label><select id="engine"></select>
+            <label class="check" id="lpg-wrap" hidden><input type="checkbox" id="lpg"><span data-i18n="f_lpg"></span></label></div>
+          <div class="field"><label for="gearbox" data-i18n="f_gearbox"></label><select id="gearbox"></select><p class="hint" id="gear-hint" hidden data-i18n="hint_hybrid_auto"></p></div>
+          <div class="field"><label for="trim" data-i18n="f_trim"></label><select id="trim"></select></div>
+          <div class="field wide"><label for="color" data-i18n="f_color"></label><select id="color"></select></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="h-use">
+        <h2 id="h-use" data-i18n="h_use"></h2>
+        <div class="grid2">
+          <div class="field"><label for="km" data-i18n="f_km"></label><input id="km" type="number" inputmode="numeric" min="0" max="600000" step="1000"><p class="hint" id="km-hint" hidden></p></div>
+          <div class="field"><label for="city" data-i18n="f_city"></label><select id="city"></select></div>
+          <div class="field wide"><span class="lbl" id="seller-lbl" data-i18n="f_seller"></span>
+            <div class="seg" role="group" aria-labelledby="seller-lbl" id="seller"></div></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="h-insp">
+        <h2 id="h-insp" data-i18n="h_insp"></h2>
+        <div class="insp">
+          <div>
+            <div class="diagram"><svg viewBox="0 0 220 380" role="group" aria-labelledby="h-insp" id="car-svg"></svg></div>
+            <p class="caption" id="caption" aria-live="polite"></p>
+          </div>
+          <div class="insp-side">
+            <div><span class="lbl" id="brush-lbl" data-i18n="brush_lbl"></span>
+              <p class="hint" data-i18n="brush_hint"></p></div>
+            <div class="seg" role="group" aria-labelledby="brush-lbl" id="brush"></div>
+            <button type="button" class="link-btn" id="clear" data-i18n="clear_all"></button>
+            <label class="check"><input type="checkbox" id="damage"><span data-i18n="f_damage"></span></label>
+            <details class="list"><summary data-i18n="list_view"></summary><div class="plist" id="plist"></div></details>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="result" id="result" aria-labelledby="r-title">
+      <p class="eyebrow" id="r-title" data-i18n="r_title"></p>
+      <p class="car-line" id="car-line"></p>
+      <div class="price" id="price" aria-live="polite"></div>
+      <div class="range">
+        <div class="track" aria-hidden="true"><i id="mid-mark"></i></div>
+        <div class="range-lbl"><span id="r-low"></span><span id="r-high"></span></div>
+      </div>
+      <p class="hint" id="range-note"></p>
+      <h3 class="sm" data-i18n="r_breakdown"></h3>
+      <ul class="rows" id="rows"></ul>
+      <div id="parts-wrap" hidden>
+        <h3 class="sm" data-i18n="r_parts"></h3>
+        <table class="parts"><tbody id="parts-body"></tbody></table>
+      </div>
+      <p class="note warn" id="warn" hidden></p>
+      <p class="note" id="gallery"></p>
+      <p class="fine" id="fine"></p>
+    </aside>
+  </div>
+
+  <footer class="page">
+    <span id="about"></span>
+    <span><a href="https://github.com/enesuykun/used-car-price-analysis" target="_blank" rel="noopener" data-i18n="source_link"></a></span>
+  </footer>
+</div>
+<div class="dock" id="dock"><div><span class="dl" data-i18n="r_title"></span><span class="dp" id="dock-price"></span></div><a href="#result" data-i18n="dock_detail"></a></div>
+
+<script>
+/*__ESTIMATOR__*/
+</script>
+<script>
+(function () {
+  "use strict";
+  const E = window.Estimator;
+  const MODEL = /*__MODEL__*/null;
+  const $ = (id) => document.getElementById(id);
+
+  const SHAPES = [
+    ["on_tampon", 55, 14, 110, 26, 13], ["kaput", 64, 44, 92, 76, 10],
+    ["sol_on_camurluk", 38, 50, 22, 70, 9], ["sag_on_camurluk", 160, 50, 22, 70, 9],
+    ["sol_on_kapi", 38, 124, 22, 62, 7], ["sag_on_kapi", 160, 124, 22, 62, 7],
+    ["sol_arka_kapi", 38, 190, 22, 58, 7], ["sag_arka_kapi", 160, 190, 22, 58, 7],
+    ["tavan", 64, 124, 92, 124, 14],
+    ["sol_arka_camurluk", 38, 252, 22, 66, 9], ["sag_arka_camurluk", 160, 252, 22, 66, 9],
+    ["bagaj", 64, 252, 92, 66, 10], ["arka_tampon", 55, 322, 110, 26, 13],
+  ];
+  const CHIP = { "Orijinal": "var(--st-orig)", "Lokal boyalı": "var(--st-local)", "Boyalı": "var(--st-paint)", "Değişen": "var(--st-repl)" };
+
+  const I18N = {
+    tr: {
+      title: "Araç Değer Tahmini", subtitle: "Marka, model, kilometre ve ekspertiz bilgilerinden tahmini ikinci el değeri. Boyalı ve değişen parçaların değerinize etkisini parça parça gösterir.",
+      banner: "Portföy demosu: model sentetik (kurgusal) ilanlarla eğitildi. Gösterilen tutarlar gerçek piyasa fiyatı değildir; satış ya da alış kararı için güncel ilanlara bakın.",
+      h_vehicle: "Araç", h_use: "Kullanım ve satış", h_insp: "Ekspertiz ve geçmiş",
+      f_model: "Marka / model", f_year: "Model yılı", f_engine: "Motor", f_lpg: "LPG dönüşümü var", f_gearbox: "Vites", f_trim: "Donanım", f_color: "Renk",
+      f_km: "Kilometre", f_city: "Şehir", f_seller: "Satıcı", f_damage: "Tramer (sigorta hasar) kaydı var",
+      hint_hybrid_auto: "Hibrit araçlar otomatiktir.",
+      brush_lbl: "Parça durumu", brush_hint: "Bir durum seçin, sonra şemada parçaya dokunun. Aynı parçaya tekrar dokunmak temizler.",
+      clear_all: "Tüm parçaları orijinal yap", list_view: "Liste görünümü", pick_part: "Bir parçaya dokunun",
+      r_title: "Tahmini değer", r_breakdown: "Hesap dökümü", r_parts: "Kaporta dökümü (tek parça etkisi)",
+      range_note: "Aralık, modelin sentetik veride yaptığı hatanın %80'lik bandıdır.",
+      row_clean: "Hatasız aynı araç", row_body: "Boya / değişen", row_damage: "Tramer kaydı", row_final: "Tahmini değer",
+      gallery: "Galeriye satış (varsayım): ilan değerinin %10-14 altı, yaklaşık", gallery_note: "Bu oran modelden değil, genel bir varsayımdır.",
+      warn_low: "Kilometre yaşa göre alışılmadık derecede düşük. Tahmin bu kadar düşük kilometreyi iyi temsil etmeyebilir.",
+      warn_high: "Kilometre yaşa göre alışılmadık derecede yüksek. Tahmin bu kadar yüksek kilometreyi iyi temsil etmeyebilir.",
+      km_hint: (a, lo, hi) => `Yıllık ortalama ${a} km (veride tipik ${lo}-${hi} bin km)`, dock_detail: "Dökümü gör", currency: "₺",
+      about: (m) => `Model: ${m.meta.n_listings.toLocaleString("tr-TR")} sentetik ilan üzerinde log-lineer regresyon (OLS). Sentetik test hatası %${(m.meta.test_mape * 100).toFixed(1).replace(".", ",")} MAPE. Fiyat düzeyi ${m.meta.ref_months[0]} - ${m.meta.last_month} ay etkilerinin ortalamasıdır.`,
+      source_link: "Kod, veri üretimi ve analiz (GitHub)", fine: "Bu araç yalnızca yöntemi göstermek içindir; ekspertiz yerine geçmez.",
+      other_city: "Diğer şehir",
+    },
+    en: {
+      title: "Used-Car Value Estimator", subtitle: "Estimated second-hand value from make, model, mileage and inspection data. Shows how each painted or replaced panel affects the value.",
+      banner: "Portfolio demo: the model was trained on synthetic (fictional) listings. Amounts shown are not real market prices; check current listings before buying or selling.",
+      h_vehicle: "Vehicle", h_use: "Usage and sale", h_insp: "Inspection and history",
+      f_model: "Make / model", f_year: "Model year", f_engine: "Engine", f_lpg: "LPG conversion fitted", f_gearbox: "Gearbox", f_trim: "Trim", f_color: "Colour",
+      f_km: "Mileage (km)", f_city: "City", f_seller: "Seller", f_damage: "Insurance damage record (tramer)",
+      hint_hybrid_auto: "Hybrids are automatic.",
+      brush_lbl: "Panel condition", brush_hint: "Pick a condition, then tap a panel on the diagram. Tapping it again clears it.",
+      clear_all: "Reset all panels to original", list_view: "List view", pick_part: "Tap a panel",
+      r_title: "Estimated value", r_breakdown: "Breakdown", r_parts: "Bodywork detail (single-panel effect)",
+      range_note: "The range is the 80% band of the model's error on synthetic data.",
+      row_clean: "Same car, flawless", row_body: "Paint / replaced", row_damage: "Damage record", row_final: "Estimated value",
+      gallery: "Sale to a dealer (assumption): 10-14% below the listing value, about", gallery_note: "This ratio is a general assumption, not a model output.",
+      warn_low: "Mileage is unusually low for the age. The estimate may not represent such low mileage well.",
+      warn_high: "Mileage is unusually high for the age. The estimate may not represent such high mileage well.",
+      km_hint: (a, lo, hi) => `Average ${a} km per year (typical in the data: ${lo}-${hi}k km)`, dock_detail: "See breakdown", currency: "₺",
+      about: (m) => `Model: log-linear regression (OLS) on ${m.meta.n_listings.toLocaleString("en-US")} synthetic listings. Synthetic test error ${(m.meta.test_mape * 100).toFixed(1)}% MAPE. The price level is the average of the ${m.meta.ref_months[0]} to ${m.meta.last_month} month effects.`,
+      source_link: "Code, data generation and analysis (GitHub)", fine: "This tool only demonstrates the method; it does not replace an inspection.",
+      other_city: "Other city",
+    },
+  };
+  const VAL = {
+    tr: {
+      fuel: { Benzin: "Benzin", Dizel: "Dizel", LPG: "LPG", Hibrit: "Hibrit" }, gearbox: { Manuel: "Manuel", Otomatik: "Otomatik" },
+      color: { Beyaz: "Beyaz", Gri: "Gri", Siyah: "Siyah", Kırmızı: "Kırmızı", Mavi: "Mavi", Diğer: "Diğer" },
+      level: { Temel: "temel", Orta: "orta", Üst: "üst" }, seller: { Sahibinden: "Sahibinden", Galeri: "Galeriden" },
+      state: { "Orijinal": "Orijinal", "Lokal boyalı": "Lokal boyalı", "Boyalı": "Boyalı", "Değişen": "Değişen" },
+      part: { kaput: "Kaput", tavan: "Tavan", bagaj: "Bagaj kapağı", sol_on_camurluk: "Sol ön çamurluk", sag_on_camurluk: "Sağ ön çamurluk",
+        sol_on_kapi: "Sol ön kapı", sag_on_kapi: "Sağ ön kapı", sol_arka_kapi: "Sol arka kapı", sag_arka_kapi: "Sağ arka kapı",
+        sol_arka_camurluk: "Sol arka çamurluk", sag_arka_camurluk: "Sağ arka çamurluk", on_tampon: "Ön tampon", arka_tampon: "Arka tampon" },
+      dir: { front: "ÖN", rear: "ARKA", left: "SOL", right: "SAĞ" },
+    },
+    en: {
+      fuel: { Benzin: "Petrol", Dizel: "Diesel", LPG: "LPG", Hibrit: "Hybrid" }, gearbox: { Manuel: "Manual", Otomatik: "Automatic" },
+      color: { Beyaz: "White", Gri: "Grey", Siyah: "Black", Kırmızı: "Red", Mavi: "Blue", Diğer: "Other" },
+      level: { Temel: "base", Orta: "mid", Üst: "top" }, seller: { Sahibinden: "Private seller", Galeri: "Dealer" },
+      state: { "Orijinal": "Original", "Lokal boyalı": "Spot-painted", "Boyalı": "Painted", "Değişen": "Replaced" },
+      part: { kaput: "Bonnet", tavan: "Roof", bagaj: "Boot lid", sol_on_camurluk: "Front left wing", sag_on_camurluk: "Front right wing",
+        sol_on_kapi: "Front left door", sag_on_kapi: "Front right door", sol_arka_kapi: "Rear left door", sag_arka_kapi: "Rear right door",
+        sol_arka_camurluk: "Rear left wing", sag_arka_camurluk: "Rear right wing", on_tampon: "Front bumper", arka_tampon: "Rear bumper" },
+      dir: { front: "FRONT", rear: "REAR", left: "LEFT", right: "RIGHT" },
+    },
+  };
+
+  const cat = MODEL.catalog;
+  const modelNames = Object.keys(cat).sort((a, b) => a.localeCompare(b));
+  const S = { lang: "tr", brush: "Boyalı", hover: null, lpg: false,
+    car: { model: "Toyota C-HR", year: 2024, km: 35000, fuel: "Hibrit", engine_cc: 1798, gearbox: "Otomatik", trim_level: "Orta",
+      color: "Gri", city: "Diğer", seller_type: "Sahibinden", damage: 0, parts: E.cleanParts() } };
+  const L = () => I18N[S.lang];
+  const V = () => VAL[S.lang];
+  const loc = () => (S.lang === "tr" ? "tr-TR" : "en-US");
+  const fmt = (n, step) => { const r = Math.round(n / step) * step; const s = r.toLocaleString(loc()); return S.lang === "tr" ? s + " " + L().currency : L().currency + s; };
+  const fmtShort = (n) => { const s = (n / 1e6).toFixed(2); return (S.lang === "tr" ? s.replace(".", ",") : s) + " M " + L().currency; };
+  const fmtPct = (p) => { const s = (p * 100).toFixed(1); return (S.lang === "tr" ? "−%" + Math.abs(s).toFixed(1).replace(".", ",") : "−" + Math.abs(s).toFixed(1) + "%"); };
+
+  function opt(value, text, selected) { const o = document.createElement("option"); o.value = value; o.textContent = text; if (selected) o.selected = true; return o; }
+  function fill(sel, items) { sel.replaceChildren(...items); }
+
+  // ---------------------------------------------------------------- form
+  function buildStatic() {
+    const t = L(), v = V();
+    document.documentElement.lang = S.lang;
+    document.title = t.title;
+    document.querySelectorAll("[data-i18n]").forEach((el) => { const val = t[el.dataset.i18n]; if (typeof val === "string") el.textContent = val; });
+    document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === S.lang)));
+    fill($("model"), modelNames.map((m) => opt(m, m, m === S.car.model)));
+    fill($("color"), MODEL.colors.map((c) => opt(c, v.color[c], c === S.car.color)));
+    fill($("city"), MODEL.cities.map((c) => opt(c, c === "Diğer" ? t.other_city : c, c === S.car.city)));
+    fill($("gearbox"), ["Manuel", "Otomatik"].map((g) => opt(g, v.gearbox[g], g === S.car.gearbox)));
+    const seller = $("seller"); seller.replaceChildren();
+    ["Sahibinden", "Galeri"].forEach((s) => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = v.seller[s]; b.dataset.value = s;
+      b.setAttribute("aria-pressed", String(S.car.seller_type === s));
+      b.addEventListener("click", () => { S.car.seller_type = s; seller.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.value === s))); update(); });
+      seller.appendChild(b);
+    });
+    const brush = $("brush"); brush.replaceChildren();
+    E.STATES.forEach((st) => {
+      const b = document.createElement("button"); b.type = "button"; b.dataset.value = st; b.setAttribute("aria-pressed", String(S.brush === st));
+      b.innerHTML = '<span class="chip" style="background:' + CHIP[st] + '"></span>';
+      b.append(v.state[st]);
+      b.addEventListener("click", () => { S.brush = st; brush.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.value === st))); });
+      brush.appendChild(b);
+    });
+    const plist = $("plist"); plist.replaceChildren();
+    E.PARTS.forEach((p) => {
+      const f = document.createElement("div"); f.className = "field";
+      const lab = document.createElement("label"); lab.htmlFor = "pl-" + p; lab.textContent = v.part[p];
+      const sel = document.createElement("select"); sel.id = "pl-" + p;
+      sel.append(...E.STATES.map((st) => opt(st, v.state[st], S.car.parts[p] === st)));
+      sel.addEventListener("change", () => { S.car.parts[p] = sel.value; update(); });
+      f.append(lab, sel); plist.appendChild(f);
+    });
+    $("km").value = S.car.km; $("damage").checked = !!S.car.damage; $("lpg").checked = S.lpg;
+    buildDependent();
+    buildDiagram();
+  }
+
+  function buildDependent() {
+    const t = L(), v = V(), c = S.car, r = E.yearRange(MODEL, c.model);
+    c.year = Math.min(Math.max(c.year, r.min), r.max);
+    const years = []; for (let y = r.max; y >= r.min; y--) years.push(y);
+    fill($("year"), years.map((y) => opt(y, y, y === c.year)));
+    const engines = E.enginesFor(MODEL, c.model, c.year);
+    const baseFuel = (f) => (f === "LPG" ? "Benzin" : f);
+    let cur = engines.find((e) => e.cc === c.engine_cc && e.fuel === baseFuel(c.fuel)) || engines[0];
+    c.engine_cc = cur.cc;
+    const premium = cat[c.model].segment === "premium";
+    const lpgOk = cur.fuel === "Benzin" && !premium;
+    if (!lpgOk) S.lpg = false;
+    c.fuel = S.lpg && lpgOk ? "LPG" : cur.fuel;
+    fill($("engine"), engines.map((e) => opt(e.cc + "|" + e.fuel, (e.cc / 1000).toFixed(1) + " " + v.fuel[e.fuel] + " · " + e.cc + " cm³", e === cur)));
+    $("lpg-wrap").hidden = !lpgOk; $("lpg").checked = S.lpg;
+    const hybrid = c.fuel === "Hibrit";
+    if (hybrid) c.gearbox = "Otomatik";
+    $("gearbox").value = c.gearbox; $("gearbox").disabled = hybrid; $("gear-hint").hidden = !hybrid;
+    const names = cat[c.model].trims;
+    const levels = ["Temel", "Orta", "Üst"];
+    fill($("trim"), names.map((n, i) => opt(levels[i], n + " (" + v.level[levels[i]] + ")", levels[i] === c.trim_level)));
+  }
+
+  // ---------------------------------------------------------------- diagram
+  function buildDiagram() {
+    const svg = $("car-svg"), v = V(), d = v.dir;
+    let h = '<g aria-hidden="true">';
+    [[24, 62], [186, 62], [24, 262], [186, 262]].forEach((w) => { h += '<rect class="wheel" x="' + w[0] + '" y="' + w[1] + '" width="10" height="40" rx="4"/>'; });
+    h += '<text class="dlabel" x="110" y="9" text-anchor="middle">' + d.front + '</text><text class="dlabel" x="110" y="372" text-anchor="middle">' + d.rear + '</text>';
+    h += '<text class="dlabel" x="4" y="204">' + d.left + '</text><text class="dlabel" x="216" y="204" text-anchor="end">' + d.right + '</text></g>';
+    SHAPES.forEach((s) => {
+      h += '<rect class="part" data-part="' + s[0] + '" x="' + s[1] + '" y="' + s[2] + '" width="' + s[3] + '" height="' + s[4] + '" rx="' + s[5] + '" role="button" tabindex="0"/>';
+    });
+    svg.innerHTML = h;
+    svg.querySelectorAll(".part").forEach((el) => {
+      const p = el.dataset.part;
+      const act = () => { S.car.parts[p] = S.car.parts[p] === S.brush ? "Orijinal" : S.brush; S.hover = p; update(); };
+      el.addEventListener("click", act);
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+      el.addEventListener("mouseenter", () => { S.hover = p; paintCaption(); });
+      el.addEventListener("focus", () => { S.hover = p; paintCaption(); });
+    });
+    paintDiagram();
+  }
+  function paintDiagram() {
+    const v = V();
+    $("car-svg").querySelectorAll(".part").forEach((el) => {
+      const p = el.dataset.part, st = S.car.parts[p];
+      el.dataset.state = st; el.setAttribute("aria-label", v.part[p] + ": " + v.state[st]);
+    });
+    E.PARTS.forEach((p) => { const sel = $("pl-" + p); if (sel) sel.value = S.car.parts[p]; });
+  }
+  function paintCaption() {
+    const v = V(), p = S.hover;
+    $("caption").innerHTML = p ? "<b>" + v.part[p] + "</b>: " + v.state[S.car.parts[p]] : L().pick_part;
+  }
+
+  // ---------------------------------------------------------------- result
+  function update() {
+    const t = L(), v = V(), c = S.car;
+    paintDiagram(); paintCaption();
+    const est = E.estimate(MODEL, c);
+    const trimIdx = ["Temel", "Orta", "Üst"].indexOf(c.trim_level);
+    $("car-line").textContent = c.model + " · " + c.year + " · " + c.km.toLocaleString(loc()) + " km · " + (c.engine_cc / 1000).toFixed(1) + " " + v.fuel[c.fuel] + " · " + cat[c.model].trims[trimIdx];
+    $("price").textContent = fmt(est.final, 5000);
+    $("dock-price").textContent = fmtShort(est.final);
+    $("r-low").textContent = fmt(est.low, 5000); $("r-high").textContent = fmt(est.high, 5000);
+    $("mid-mark").style.left = (100 * (est.final - est.low) / (est.high - est.low)) + "%";
+    $("range-note").textContent = t.range_note;
+    const rows = [
+      [t.row_clean, est.clean, est.clean, false, false],
+      [t.row_body, est.bodyLoss, est.clean, true, false],
+      [t.row_damage, est.damageLoss, est.clean, true, false],
+      [t.row_final, est.final, est.clean, false, true],
+    ];
+    $("rows").replaceChildren(...rows.map((r) => {
+      const li = document.createElement("li"); li.className = "row" + (r[4] ? " total" : "");
+      const loss = r[3];
+      const val = (loss && Math.abs(r[1]) < 500 ? "0" : (loss ? "−" + fmt(Math.abs(r[1]), 1000) : fmt(r[1], 1000)));
+      li.innerHTML = '<div class="row-top"><span></span><span class="v' + (loss && Math.abs(r[1]) >= 500 ? " neg" : "") + '"></span></div><div class="bar"><b class="' + (loss ? "neg" : "") + '"></b></div>';
+      li.querySelector("span").textContent = r[0]; li.querySelector(".v").textContent = val;
+      const w = Math.max(0, Math.min(100, 100 * Math.abs(r[1]) / r[2]));
+      const barEl = li.querySelector("b"); barEl.style.width = w + "%"; barEl.style.minWidth = w > 0.3 ? "2px" : "0";
+      return li;
+    }));
+    $("parts-wrap").hidden = est.parts.length === 0;
+    $("parts-body").replaceChildren(...est.parts.map((p) => {
+      const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = CHIP[p.state];
+      const name = document.createElement("td"); name.append(dot, v.part[p.part] + " · " + v.state[p.state]);
+      const amount = document.createElement("td"); amount.textContent = fmtPct(p.pct) + " (−" + fmt(Math.abs(p.tl), 1000) + ")";
+      const tr = document.createElement("tr"); tr.append(name, amount); return tr;
+    }));
+    const km = E.kmCheck(MODEL, c), warn = $("warn");
+    warn.hidden = !km; if (km) warn.textContent = (km === "low" ? t.warn_low : t.warn_high);
+    const hint = $("km-hint");
+    const age = Math.max(0, MODEL.meta.ref_year - c.year);
+    hint.hidden = age < 1;
+    if (age >= 1) hint.textContent = t.km_hint(Math.round(c.km / (age + 0.5)).toLocaleString(loc()), Math.round(MODEL.meta.km_per_year_p05 / 1000), Math.round(MODEL.meta.km_per_year_p95 / 1000));
+    $("gallery").textContent = t.gallery + " " + fmt(est.final * 0.86, 10000) + " - " + fmt(est.final * 0.90, 10000) + ". " + t.gallery_note;
+    $("about").textContent = t.about(MODEL);
+    $("fine").textContent = t.fine;
+  }
+
+  // ---------------------------------------------------------------- events
+  $("model").addEventListener("change", (e) => { S.car.model = e.target.value; S.car.trim_level = "Orta"; S.lpg = false; buildDependent(); update(); });
+  $("year").addEventListener("change", (e) => { S.car.year = +e.target.value; buildDependent(); update(); });
+  $("engine").addEventListener("change", (e) => { const p = e.target.value.split("|"); S.car.engine_cc = +p[0]; S.car.fuel = p[1]; S.lpg = false; buildDependent(); update(); });
+  $("lpg").addEventListener("change", (e) => { S.lpg = e.target.checked; buildDependent(); update(); });
+  $("gearbox").addEventListener("change", (e) => { S.car.gearbox = e.target.value; update(); });
+  $("trim").addEventListener("change", (e) => { S.car.trim_level = e.target.value; update(); });
+  $("color").addEventListener("change", (e) => { S.car.color = e.target.value; update(); });
+  $("city").addEventListener("change", (e) => { S.car.city = e.target.value; update(); });
+  $("km").addEventListener("input", (e) => { const n = parseInt(e.target.value, 10); S.car.km = Number.isFinite(n) ? Math.min(Math.max(n, 0), 600000) : 0; update(); });
+  $("km").addEventListener("change", (e) => { e.target.value = S.car.km; });
+  $("damage").addEventListener("change", (e) => { S.car.damage = e.target.checked ? 1 : 0; update(); });
+  $("clear").addEventListener("click", () => { S.car.parts = E.cleanParts(); S.hover = null; update(); });
+  document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => { S.lang = b.dataset.lang; buildStatic(); update(); }));
+
+  window.__app = { state: S, estimate: () => E.estimate(MODEL, S.car) };  // testler için
+  buildStatic(); update();
+})();
+</script>

@@ -25,8 +25,23 @@ Adım adım anlatım: **[`notebooks/adim_adim_analiz.ipynb`](notebooks/adim_adim
 - **Veri üretimi ve kalibrasyon:** Kamuya açık kaynaklara (BETAM, TÜİK) göre ayarlanmış, olay bazlı (kur şoku, pandemi, çip krizi) 10 yıllık sentetik veri. Kurulan "gerçek" etkiler sayesinde yöntem doğrulanabiliyor.
 - **İstatistiksel modelleme:** Log-lineer OLS (el yazımı, güven aralıklı), aylık dönem kuklalarıyla piyasa endeksi, model bazlı yaş eğimleri, kurulan etkileri geri bulma testi.
 - **Makine öğrenmesi:** Random Forest ve Gradient Boosting, zaman ve model etkileşimiyle birlikte; permütasyon önemi.
-- **Yazılım pratiği:** 73 birim, tutarlılık ve uçtan uca test; yeniden üretilebilir (seed, `--fast`, CLI); notebook'u üreten betik.
+- **Yazılım pratiği:** 89 birim, tutarlılık, uçtan uca ve arayüz testi (JavaScript-Python eşdeğerliği dahil); yeniden üretilebilir (seed, `--fast`, CLI); notebook'u üreten betik.
 - **Dürüst raporlama:** Sınırlamalar ve doğrulanmamış varsayımlar açıkça yazıldı (aşağıda "Sınırlamalar").
+
+### Web arayüzü
+
+![Araç Değer Tahmini arayüzü](images/app.png)
+
+[`app/index.html`](app/index.html) dosyasını tarayıcıda açmak yeterli (sunucu gerekmez, telefonda da çalışır, TR/EN). Marka, model, motor, kilometre, renk ve donanımı girip **ekspertiz şemasında** parçalara dokunarak (orijinal / lokal boyalı / boyalı / değişen) boya ve değişen parçaları işaretlersiniz. Sağdaki kart, tahmini değeri, olası aralığı ve **hatasız fiyattan tahmine kalem kalem dökümü** (boya/değişen kaybı, tramer kaybı, parça başına etki) gösterir.
+
+- Model, log-lineer regresyonun katsayılarıdır (`app/model.json`); tarayıcıda çarpılıp toplanır, hesap yoktur sunucuda.
+- JavaScript hesabı, Python ile **aynı sonucu** verir (fark ~10⁻¹⁵); bu, testlerle doğrulanır.
+- Sayfada "sentetik veriyle eğitilmiş portföy demosu, gerçek fiyat değildir" uyarısı sürekli görünür.
+
+```bash
+python app/export_model.py     # modeli app/model.json'a aktarır
+python app/build_app.py        # app/index.html'i üretir
+```
 
 ### Veri ve değişkenler
 
@@ -195,7 +210,7 @@ python generate_data.py                       # data/listings.csv (16.000 ilan, 
 ```
 
 ```bash
-python -m unittest discover -s tests -v       # 73 test (~20 sn)
+python -m unittest discover -s tests -v       # 89 test (~25 sn)
 ```
 
 ```bash
@@ -213,8 +228,9 @@ python notebooks/build_notebook.py            # notebook'u üretir ve çalışt�
 ├── generate_data.py      # kalibre sentetik veri üretici: piyasa endeksi, model kataloğu, kurulan etkiler, kaporta cezaları
 ├── analysis.py           # şema, özellik üretimi, OLS (güven aralıklı), kaporta etkileri, metrikler, permütasyon önemi
 ├── run_analysis.py       # modelleme, doğrulama, grafikler (--fast, --csv, --results-dir, --images-dir)
+├── app/                  # web arayüzü: index.html (tek dosya, sunucusuz), model dışa aktarma, derleme betiği
 ├── notebooks/            # adım adım anlatım (adim_adim_analiz.ipynb) ve onu üreten betik
-├── tests/                # 73 test: analiz birimleri, veri tutarlılığı/kalibrasyon, uçtan uca hat
+├── tests/                # 89 test: analiz birimleri, veri tutarlılığı/kalibrasyon, uçtan uca hat, web arayüzü
 ├── data/                 # üretilen veri
 ├── results/              # model karşılaştırması, etkiler, kaporta, endeks, değer kaybı, önem, tahminler (CSV)
 └── images/               # README grafikleri
@@ -258,8 +274,23 @@ Turkish with English headings in this README).
 - **Data generation and calibration:** a 10-year synthetic dataset tuned to public sources (BETAM, TÜİK) with event-based dynamics (currency shock, pandemic, chip shortage). Planted "true" effects make the method verifiable.
 - **Statistical modelling:** hand-written log-linear OLS with confidence intervals, a market index from monthly period dummies, model-specific age slopes, and a planted-effect recovery test.
 - **Machine learning:** Random Forest and Gradient Boosting, with permutation importance.
-- **Engineering practice:** 73 unit, consistency and end-to-end tests; reproducible (seeds, `--fast`, CLI); a script that builds the notebook.
+- **Engineering practice:** 89 unit, consistency, end-to-end and UI tests (including JavaScript-Python parity); reproducible (seeds, `--fast`, CLI); a script that builds the notebook.
 - **Honest reporting:** limitations and unverified assumptions are stated explicitly (see "Limitations").
+
+### Web interface
+
+![Used-car value estimator interface](images/app.png)
+
+Open [`app/index.html`](app/index.html) in a browser (no server needed, works on phones, TR/EN). Enter make, model, engine, mileage, colour and trim, then tap panels on the **inspection diagram** (original / spot-painted / painted / replaced) to mark paint and replaced parts. The card on the right shows the estimated value, a plausible range and a **step-by-step breakdown from the flawless price to the estimate** (paint/replaced loss, damage-record loss, per-panel effect).
+
+- The model is the log-linear regression's coefficients (`app/model.json`), multiplied and summed in the browser. There is no server-side computation.
+- The JavaScript calculation gives the **same result** as Python (difference ~10⁻¹⁵); tests verify this.
+- The page always shows a notice that it is a portfolio demo trained on synthetic data, not real prices.
+
+```bash
+python app/export_model.py     # export the model to app/model.json
+python app/build_app.py        # build app/index.html
+```
 
 ### Data and variables
 
@@ -368,7 +399,7 @@ python generate_data.py                       # data/listings.csv (16,000 listin
 ```
 
 ```bash
-python -m unittest discover -s tests -v       # 73 tests (~20 s)
+python -m unittest discover -s tests -v       # 89 tests (~25 s)
 ```
 
 ```bash
