@@ -83,7 +83,7 @@ MODELS = {
     "Toyota Corolla":     dict(seg="orta", w=1.1, base=78_000, dep=0.045, launch=2004,
                                engines=[(1329, "Benzin", 2013), (1598, "Benzin", 2013), (1798, "Hibrit", 2019), (1364, "Dizel", 2013)],
                                trims=["Life", "Vision", "Dream"]),
-    "Toyota C-HR":        dict(seg="suv", w=0.4, base=110_000, dep=0.050, launch=2016,
+    "Toyota C-HR":        dict(seg="suv", w=0.4, base=76_000,  dep=0.050, launch=2016,
                                engines=[(1798, "Hibrit", 2017), (1197, "Benzin", 2017)],
                                trims=["Flame", "Passion", "Passion X"]),
     "Volkswagen Polo":    dict(seg="ekonomi", w=0.8, base=62_000, dep=0.055, launch=2004,
@@ -184,7 +184,10 @@ STATE_PROBS = {
 }
 
 # Ortalama ilan fiyatını çapa seviyesine oturtan sabit ölçek (_calibrate() ile hesaplandı).
-PRICE_SCALE = 0.913
+PRICE_SCALE = 1.266
+# İlan yaşı dağılımı (gamma şekil, ölçek) ve model bazlı değer kaybı çarpanı. BETAM model yılı ortalamalarına göre ayarlanır.
+AGE_GAMMA = (2.0, 6.0)
+DEP_MULT = 1.4
 
 CITIES = ["İstanbul", "Ankara", "İzmir", "Bursa", "Antalya", "Adana", "Konya", "Kocaeli", "Diğer"]
 CITY_P = [0.27, 0.12, 0.09, 0.06, 0.05, 0.04, 0.04, 0.04, 0.29]
@@ -229,12 +232,12 @@ def generate(n: int = N, seed: int = SEED) -> pd.DataFrame:
 
     # yaş: ilan sitelerinde ortalama ~7-8 yaş; model yılı, model adının satışa girdiği yıldan önce olamaz
     launch = np.array([MODELS[m]["launch"] for m in model])
-    age = np.clip(rng.gamma(2.3, 3.4, n).round(), 0, 20).astype(int)
+    age = np.clip(rng.gamma(*AGE_GAMMA, n).round(), 0, 20).astype(int)
     for _ in range(20):  # uygunsuz yaşları yeniden çek
         bad = listing_year - age < launch
         if not bad.any():
             break
-        age[bad] = np.clip(rng.gamma(2.3, 3.4, bad.sum()).round(), 0, 20).astype(int)
+        age[bad] = np.clip(rng.gamma(*AGE_GAMMA, bad.sum()).round(), 0, 20).astype(int)
     age = np.minimum(age, listing_year - launch)
     year = listing_year - age
 
@@ -307,7 +310,7 @@ def generate(n: int = N, seed: int = SEED) -> pd.DataFrame:
     log_price = (
         np.log(base * idx)
         + np.log(PRICE_SCALE)
-        - dep * age
+        - DEP_MULT * dep * age
         + AGE_QUAD * age**2
         + eff["km_10k"] * km / 10_000
         + eff["engine_100cc"] * (engine_cc - min_cc) / 100

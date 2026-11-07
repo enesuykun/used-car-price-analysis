@@ -112,9 +112,10 @@ cmp.round(3)
 """)
 
 md("""
-Üretilen ortalama, çapaların çoğunda hedefin ±%4'ü içinde. En büyük sapma 2016 başında (+%11): ilk aylarda
-yaş/model karışımı biraz farklı, üstelik 2016-2022 çapaları zaten yaklaşık değerler. Kalibrasyon ölçeği
-(`PRICE_SCALE`), kaynaklı çapaların olduğu 2023-11 sonrası döneme göre hesaplanır.
+2024 ve sonrasında üretilen ortalama, kaynaklı çapaların ±%3'ü içinde. **Daha eski dönemde sapma büyük:** 2016 başında
+~%31, Kasım 2023'te ~%12 yüksek. Nedeni, yaş dağılımının tüm yıllar için sabit olması (gerçekte ilanlar o dönemde
+daha gençti) ve 2016-2022 çapalarının zaten yaklaşık olması. Ölçek (`PRICE_SCALE`), 2023-11 sonrası dönemin ortalamasına
+göre hesaplanır. Bu bir sınırlamadır; yöntemi değil, fiyat düzeyini etkiler.
 """)
 
 code("""
@@ -245,7 +246,7 @@ md("""
 Okuma örnekleri (OLS tahminleri):
 * **Üst donanım** temel pakete göre yaklaşık **+%9**, **orta donanım** ~+%4.
 * Aynı model içinde **+100 cm³** motor hacmi ~+%2,5.
-* **Renk:** gri, beyaza göre biraz primli. Kırmızı, mavi ve "diğer" renkler %2-4 iskontolu (daha dar alıcı kitlesi).
+* **Renk:** gri ile beyaz arasında fark yok denecek kadar küçük (+%0,1; kurulan +%0,5, güven aralığı bunu kıl payı kaçırdı). Kırmızı, mavi ve "diğer" renkler %2-4 iskontolu (daha dar alıcı kitlesi).
 * **Tramer kaydı**, boya/değişen parçalara **ek olarak** ~−%5. Kaporta etkileri ayrıca modelde.
 """)
 
@@ -297,13 +298,13 @@ Etkiler log ölçekte toplandığı için toplam kayıp, parça yüzdelerinin ba
 md("""
 ## 7. Markaya göre yıllık değer kaybı
 Her model için ayrı yaş eğimi (`age_by_model=True`). Bu etkileşim olmadan, değerini iyi koruyan modellerde yoğunlaşan
-değişkenlerin (ör. hibrit: Toyota/Honda) katsayıları yanlı çıkıyordu. Etkileşim eklenince tüm kurulan etkiler
-güven aralığı içinde bulundu.
+değişkenlerin (ör. hibrit: Toyota/Honda) katsayıları yanlı çıkıyordu. Etkileşim eklenince kurulan etkilerin 39'unun
+37'si %95 güven aralığı içinde bulundu (beklenen ~2 kaçırma: gri renk ve boyalı bagaj kapağı).
 """)
 
 code("""
 dep = A.model_depreciation(table, sorted(df.model.unique()))
-dep["gerçek_%"] = dep.model.map(lambda m: -np.expm1(-G.MODELS[m]["dep"]) * 100)
+dep["gerçek_%"] = dep.model.map(lambda m: -np.expm1(-G.DEP_MULT * G.MODELS[m]["dep"]) * 100)
 dep.assign(ols_yıllık_kayıp_yüzde=dep.annual_loss_pct * 100)[["model", "ols_yıllık_kayıp_yüzde", "gerçek_%"]].round(2)
 """)
 
@@ -373,9 +374,9 @@ ortalama önemi düşük görünüyor. Ancak tavanı değişmiş bir araç için
 
 ## 10. Sonuç ve sınırlamalar
 
-* Yöntem, bilinen etkileri geri buluyor: genel etkiler, 21 kaporta etkisi ve aylık piyasa endeksi kurulan değerlere çok yakın.
+* Yöntem, bilinen etkileri geri buluyor: genel etkiler, 21 kaporta etkisi (20'si güven aralığında) ve aylık piyasa endeksi kurulan değerlere çok yakın.
 * **Sentetik veri:** Etkilerin büyüklüğü bizim seçimimiz. Bulgular piyasa hakkında kesin bilgi vermez.
-* 2016-2022 fiyat çapaları yaklaşık değerler. EV'ler (ör. Togg, Tesla) ve ağır hasar kaydı bu sürümde yok.
+* 2016-2022 fiyat çapaları yaklaşık değerler. Fiyat düzeyi yalnızca Toyota C-HR için gerçek ilanlarla, genel ortalama ise BETAM çapalarıyla kontrol edildi; diğer 17 modelin düzeyi doğrulanmadı. EV'ler (ör. Togg, Tesla) ve ağır hasar kaydı bu sürümde yok.
 * Rastgele eğitim/test ayrımı. Geleceğe tahmin için zamana göre ayrım gerekir.
 * Gerçek veride "boya fiyatı %X düşürür" ifadesi nedensel okunmamalı: boyalı araçlar başka açılardan da (bakım, kullanım) farklı olabilir.
 """)

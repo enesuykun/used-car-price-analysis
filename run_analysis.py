@@ -391,9 +391,9 @@ def main(argv=None):
     # --- model bazlı yıllık değer kaybı
     dep = model_depreciation(table, sorted(df["model"].unique()))
     if synthetic:
-        from generate_data import MODELS as GEN_MODELS
+        from generate_data import DEP_MULT, MODELS as GEN_MODELS
 
-        dep["planted_annual_loss_pct"] = dep.model.map(lambda m: -np.expm1(-GEN_MODELS[m]["dep"]))
+        dep["planted_annual_loss_pct"] = dep.model.map(lambda m: -np.expm1(-DEP_MULT * GEN_MODELS[m]["dep"]))
     dep.to_csv(results / "model_depreciation.csv", index=False)
     print("\nYıllık değer kaybı en düşük / en yüksek modeller (OLS, %):")
     print(pd.concat([dep.head(3), dep.tail(3)]).assign(pct=lambda d: (d.annual_loss_pct * 100).round(1))[["model", "pct"]].to_string(index=False))
@@ -427,9 +427,9 @@ def main(argv=None):
     curves[best_tree] = partial_dependence_age(predict_tree, feats[fs_tree].iloc[idx_te], ages)
     truth = None
     if synthetic:
-        from generate_data import AGE_QUAD, MODELS as GEN_MODELS
+        from generate_data import AGE_QUAD, DEP_MULT, MODELS as GEN_MODELS
 
-        dep_te = df.iloc[idx_te]["model"].map({k: v["dep"] for k, v in GEN_MODELS.items()}).to_numpy()
+        dep_te = DEP_MULT * df.iloc[idx_te]["model"].map({k: v["dep"] for k, v in GEN_MODELS.items()}).to_numpy()
         truth = pd.Series({a: float(np.exp(np.mean(-dep_te * a) + AGE_QUAD * a**2)) for a in ages})
         truth = truth / truth.iloc[0]
     out_curves = pd.DataFrame(curves)
