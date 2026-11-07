@@ -25,7 +25,7 @@ Adım adım anlatım: **[`notebooks/adim_adim_analiz.ipynb`](notebooks/adim_adim
 - **Veri üretimi ve kalibrasyon:** Kamuya açık kaynaklara (BETAM, TÜİK) göre ayarlanmış, olay bazlı (kur şoku, pandemi, çip krizi) 10 yıllık sentetik veri. Kurulan "gerçek" etkiler sayesinde yöntem doğrulanabiliyor.
 - **İstatistiksel modelleme:** Log-lineer OLS (el yazımı, güven aralıklı), aylık dönem kuklalarıyla piyasa endeksi, model bazlı yaş eğimleri, kurulan etkileri geri bulma testi.
 - **Makine öğrenmesi:** Random Forest ve Gradient Boosting, zaman ve model etkileşimiyle birlikte; permütasyon önemi.
-- **Yazılım pratiği:** 89 birim, tutarlılık, uçtan uca ve arayüz testi (JavaScript-Python eşdeğerliği dahil); yeniden üretilebilir (seed, `--fast`, CLI); notebook'u üreten betik.
+- **Yazılım pratiği:** 90 birim, tutarlılık, uçtan uca ve arayüz testi (JavaScript-Python eşdeğerliği dahil); yeniden üretilebilir (seed, `--fast`, CLI); notebook'u üreten betik.
 - **Dürüst raporlama:** Sınırlamalar ve doğrulanmamış varsayımlar açıkça yazıldı (aşağıda "Sınırlamalar").
 
 ### Web arayüzü
@@ -210,7 +210,7 @@ python generate_data.py                       # data/listings.csv (16.000 ilan, 
 ```
 
 ```bash
-python -m unittest discover -s tests -v       # 89 test (~25 sn)
+python -m unittest discover -s tests -v       # 90 test (~25 sn)
 ```
 
 ```bash
@@ -229,8 +229,9 @@ python notebooks/build_notebook.py            # notebook'u üretir ve çalışt�
 ├── analysis.py           # şema, özellik üretimi, OLS (güven aralıklı), kaporta etkileri, metrikler, permütasyon önemi
 ├── run_analysis.py       # modelleme, doğrulama, grafikler (--fast, --csv, --results-dir, --images-dir)
 ├── app/                  # web arayüzü: index.html (tek dosya, sunucusuz), model dışa aktarma, derleme betiği
+├── docs/                 # GitHub Pages için app/index.html kopyası
 ├── notebooks/            # adım adım anlatım (adim_adim_analiz.ipynb) ve onu üreten betik
-├── tests/                # 89 test: analiz birimleri, veri tutarlılığı/kalibrasyon, uçtan uca hat, web arayüzü
+├── tests/                # 90 test: analiz birimleri, veri tutarlılığı/kalibrasyon, uçtan uca hat, web arayüzü
 ├── data/                 # üretilen veri
 ├── results/              # model karşılaştırması, etkiler, kaporta, endeks, değer kaybı, önem, tahminler (CSV)
 └── images/               # README grafikleri
@@ -274,7 +275,7 @@ Turkish with English headings in this README).
 - **Data generation and calibration:** a 10-year synthetic dataset tuned to public sources (BETAM, TÜİK) with event-based dynamics (currency shock, pandemic, chip shortage). Planted "true" effects make the method verifiable.
 - **Statistical modelling:** hand-written log-linear OLS with confidence intervals, a market index from monthly period dummies, model-specific age slopes, and a planted-effect recovery test.
 - **Machine learning:** Random Forest and Gradient Boosting, with permutation importance.
-- **Engineering practice:** 89 unit, consistency, end-to-end and UI tests (including JavaScript-Python parity); reproducible (seeds, `--fast`, CLI); a script that builds the notebook.
+- **Engineering practice:** 90 unit, consistency, end-to-end and UI tests (including JavaScript-Python parity); reproducible (seeds, `--fast`, CLI); a script that builds the notebook.
 - **Honest reporting:** limitations and unverified assumptions are stated explicitly (see "Limitations").
 
 ### Web interface
@@ -399,7 +400,7 @@ python generate_data.py                       # data/listings.csv (16,000 listin
 ```
 
 ```bash
-python -m unittest discover -s tests -v       # 89 tests (~25 s)
+python -m unittest discover -s tests -v       # 90 tests (~25 s)
 ```
 
 ```bash

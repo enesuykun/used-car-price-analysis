@@ -123,6 +123,11 @@ class TestBuiltPage(unittest.TestCase):
         body = build_app.assemble().split("<!--BODY-->", 1)[1].strip()
         self.assertIn(body, html)
 
+    def test_pages_copy_matches_app_page(self):
+        """GitHub Pages /docs/index.html, app/index.html ile birebir aynı olmalı (build_app.py ikisini birlikte yazar)."""
+        self.assertEqual((ROOT / "docs" / "index.html").read_text(encoding="utf-8"), (APP / "index.html").read_text(encoding="utf-8"))
+        self.assertTrue((ROOT / "docs" / ".nojekyll").exists())
+
     def test_page_is_self_contained(self):
         html = (APP / "index.html").read_text(encoding="utf-8")
         self.assertTrue(html.startswith("<!doctype html>"))

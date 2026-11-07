@@ -46,9 +46,15 @@ def main() -> None:
         Path(args.fragment).write_text(head + body, encoding="utf-8")
         print(f"fragment: {args.fragment} ({len(head + body) / 1024:.0f} KB)")
         return
+    page = WRAP.format(head=head.strip(), body=body.strip())
     out = HERE / "index.html"
-    out.write_text(WRAP.format(head=head.strip(), body=body.strip()), encoding="utf-8")
-    print(f"yazıldı: {out} ({out.stat().st_size / 1024:.0f} KB)")
+    out.write_text(page, encoding="utf-8")
+    # GitHub Pages /docs klasöründen sunar: aynı sayfanın kopyası (Settings > Pages > Deploy from a branch > /docs)
+    docs = HERE.parent / "docs"
+    docs.mkdir(exist_ok=True)
+    (docs / "index.html").write_text(page, encoding="utf-8")
+    (docs / ".nojekyll").write_text("", encoding="utf-8")
+    print(f"yazıldı: {out} ve {docs / 'index.html'} ({out.stat().st_size / 1024:.0f} KB)")
 
 
 if __name__ == "__main__":
