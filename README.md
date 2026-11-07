@@ -229,6 +229,10 @@ python notebooks/build_notebook.py            # notebook'u üretir ve çalışt�
 - Pazar payları ve araç parkı yaşı: [Best Selling Cars Blog (2025)](https://bestsellingcarsblog.com/2026/01/turkiye-full-year-2025-renault-and-clio-take-the-lead-in-record-market/), [NTV](https://www.ntv.com.tr/otomobil/14-yasindaki-otomobilleri-kullaniyoruz-1707683)
 - Boya/değişen ve değer kaybı: [arabam.com blog](https://www.arabam.com/blog/?p=74382), [Fair Fix (kapı hasarı)](https://fairfix.com.tr/parca-deger-kaybi/kapi-hasarinda-arac-deger-kaybi-hesaplama-orta/), [Koptay Hukuk (hesaplama yöntemi)](https://koptay.av.tr/makale/arac-deger-kaybi-hesaplama-yontemi-kriterleri)
 
+### Lisans ve marka notu
+
+Bu depo yalnızca **incelenmek için** herkese açıktır; kodun, verinin veya notebook'un başka bir yerde kullanılması için yazılı izin gerekir ([LICENSE](LICENSE)). Marka ve model adları ilgili sahiplerine aittir; bu proje onlarla bağlantılı değildir, adlar yalnızca etiket olarak kullanılmıştır.
+
 ---
 
 ## 🇬🇧 English
@@ -380,3 +384,7 @@ python notebooks/build_notebook.py            # build and execute the notebook
 ```
 
 Sources are listed in the Turkish section under **Kaynaklar**.
+
+### License and trademark note
+
+This repository is public **for viewing only**; using the code, data or notebook elsewhere requires written permission ([LICENSE](LICENSE)). Brand and model names belong to their respective owners; this project is not affiliated with them and the names are used only as labels.
